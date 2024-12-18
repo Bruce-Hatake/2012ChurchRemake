@@ -1,0 +1,86 @@
+import random
+
+# Mapping for bits to bases (with synonyms)
+BIT_TO_BASE = {'0': ['A', 'C'], '1': ['G', 'T']}
+
+# Universal primers
+FORWARD_PRIMER = "CTACACGACGCTCTTCCGATCT"
+REVERSE_PRIMER = "AGATCGGAAGAGCGGTTCAGCA"
+
+# Avoid homopolymer runs of 4 bases
+HOMOPOLYMER_LIMIT = 3
+
+def avoid_homopolymer(last_bases, base):
+    """Ensure no homopolymer runs of 4 bases."""
+    if len(last_bases) >= HOMOPOLYMER_LIMIT and all(b == base for b in last_bases[-HOMOPOLYMER_LIMIT:]):
+        synonyms = {'A': 'C', 'C': 'A', 'G': 'T', 'T': 'G'}
+        return synonyms[base]
+    return base
+
+def encode_bits_to_dna(bits, last_bases):
+    """Convert a sequence of bits into a DNA sequence."""
+    dna_seq = ""
+    for bit in bits:
+        base = random.choice(BIT_TO_BASE[bit])  # Randomly choose between synonyms
+        base = avoid_homopolymer(last_bases, base)  # Avoid homopolymer runs
+        last_bases.append(base)
+        if len(last_bases) > HOMOPOLYMER_LIMIT:
+            last_bases.pop(0)
+        dna_seq += base
+    return dna_seq
+
+def bits_to_dna_from_string(bits, segment_length=12, max_address=524288):
+    """
+    Encode a bitstream string into DNA oligos.
+
+    Args:
+        bits (str): Input bitstream.
+        segment_length (int): Length of data in bytes per segment.
+        max_address (int): Maximum number of addresses.
+
+    Returns:
+        list: List of tuples (address, data_bits, DNA oligo).
+    """
+    oligos_with_details = []
+    address = 1  # Start address at 1 (0000000000000000001)
+    last_bases = []
+
+    # Validate input
+    if not all(bit in "01" for bit in bits):
+        raise ValueError("Input contains invalid characters. Only '0' and '1' are allowed.")
+
+    # Process bitstream into DNA oligos
+    for i in range(0, len(bits), segment_length * 8):  # Segment length is in bytes (8 bits/byte)
+        if address > max_address:
+            break  # Stop if max address is exceeded
+
+        # Encode the 19-bit address
+        address_bits = f"{address:019b}"  # Convert address to 19-bit binary
+        address_dna = encode_bits_to_dna(address_bits, last_bases)
+
+        # Encode the 96-bit data block
+        data_bits = bits[i:i + segment_length * 8].ljust(96, '0')  # Ensure 96 bits with padding if needed
+        data_dna = encode_bits_to_dna(data_bits, last_bases)
+
+        # Combine primers, address, and data into an oligo
+        oligo = FORWARD_PRIMER + address_dna + data_dna + REVERSE_PRIMER
+        oligos_with_details.append((address_bits, data_bits, oligo))
+
+        address += 1  # Increment address for the next segment
+
+    return oligos_with_details
+
+if __name__ == "__main__":
+    try:
+        # Prompt user for input bitstream
+        bits = input("Enter a string of bits (e.g., 0101010101): ").strip()
+
+        # Encode the bitstream into DNA oligos
+        oligos_with_details = bits_to_dna_from_string(bits)
+
+        # Output results: print address, data bits, and DNA oligos
+        print(f"\nGenerated {len(oligos_with_details)} DNA oligos with details:")
+        for idx, (address, data_bits, oligo) in enumerate(oligos_with_details):
+            print(f"Address: {address} | Data Bits: {data_bits} | Oligo {idx + 1}: {oligo}")
+    except Exception as e:
+        print(f"Error: {e}")
