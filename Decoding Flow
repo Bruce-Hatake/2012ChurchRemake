@@ -1,0 +1,75 @@
+import random
+
+# Mapping bases back to bits
+BASE_TO_BIT = {'A': '0', 'C': '0', 'G': '1', 'T': '1'}
+
+# Universal primers
+FORWARD_PRIMER = "CTACACGACGCTCTTCCGATCT"
+REVERSE_PRIMER = "AGATCGGAAGAGCGGTTCAGCA"
+
+def decode_dna_to_bits(dna_sequence):
+    """
+    Decode a DNA sequence back into a bitstring.
+    Args:
+        dna_sequence (str): Input DNA sequence.
+    Returns:
+        str: Decoded bitstring.
+    """
+    return ''.join(BASE_TO_BIT[base] for base in dna_sequence)
+
+def decode_oligos_to_bitstream(oligos):
+    """
+    Decode a list of DNA oligos back into the original bitstream.
+    Args:
+        oligos (list): List of DNA oligos.
+    Returns:
+        str: Reconstructed bitstream.
+    """
+    decoded_blocks = {}
+
+    for oligo in oligos:
+        # Remove forward and reverse primers
+        core_sequence = oligo[len(FORWARD_PRIMER):-len(REVERSE_PRIMER)]
+
+        # Extract address (first 19 nucleotides) and data (next 96 nucleotides)
+        address_dna = core_sequence[:19]
+        data_dna = core_sequence[19:19+96]
+
+        # Decode address and data
+        address_bits = decode_dna_to_bits(address_dna)
+        data_bits = decode_dna_to_bits(data_dna)
+
+        # Convert address to integer for sorting
+        address = int(address_bits, 2)
+        decoded_blocks[address] = data_bits
+
+    # Reconstruct the original bitstream by sorting blocks by address
+    sorted_addresses = sorted(decoded_blocks.keys())
+    reconstructed_bitstream = ''.join(decoded_blocks[address] for address in sorted_addresses)
+
+    return reconstructed_bitstream
+
+if __name__ == "__main__":
+    # Input: DNA oligos from encoding flow, These are placeholders from the last use
+    oligos = [
+        "CTACACGACGCTCTTCCGATCTCCACCAACCCACAACAACTCCCAATAAACGGTGCGCGTCACACATGTGCATAGGGTCACCTAGCGATCTTAGTCAGAATTATCCAATAGCCTCCGTCAACAAAGACAGCGACTTTAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTAACACAACAAACCAACCTATTCCCGCCCGGGACATACATAGGACGTTGGGTTACCCTATGCATTCGACGAGCACTGTGACGCACCGTTGACGTAGTCTGGCTCATCCGATGGTGTAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTCACCCACACAAACACCCGTAGGTAGATCGCGGTTCAGTCGCTTATAATCATTGTACTAAGACAAACACCCTGCAATACCTTATCTAGGCTTAATCGAATGTCCGAATATCCGCAAAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTACCCAAACAAACAAACGCCCAAGGTTTCGACCTTCGCATATGTTATGAGTGTTCGGCATATCGTAGTGCGGACCGAACGCACATGCGAAGTCCGGCACTCAGAAGCACAGACCATAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTCAACCCAAACCCACCATAGAGAGGTCTTCGCATCTTAATATATAAGCTTCCGCTCAGCTACCTAGTGATTAAGCCAAATAGATCACATCTCTTTGAGGTACCTCCATATTGCGGAAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTACCCAAACAAACAACAGGCCCGTGTAACGCCGGTGGCCTCACTACAGTGTAAATTATGCAGTATCGTCTTAAAGTTCATCTACTCTTGACGGCATCTCACAGAACGATCGATTTAAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTACCAACAACCCAACCCGTTTGTAATTACCGAAACACCCTCTTCGCGCCATCCGGATGTAGCTGCAAGCTCGCTGATTTCAGCTATAGGCGGTCCTCGTTGACGGACAATTGGATTAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTCCACCAACCCACACAGCACGCGTTGGAATATGGCAAACACTAGAAAGGACTTTCAAATGCGGTATTCTGGTGGAGACAGCCCTCTGTGTCGGGAATCGGCATATGGCACTCGTTGAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTACCCAACCAACCCAATACGCACGAAAGAAACCTCTCCAGTGTACGACCAGAATTCCCTTTGTTGACGCCCTTCCTCGCATTCCTTATCCCTGCCAGAGCCGCTAAGATGCGCGAGAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTAACACACACCAACCAGATCCTCATGTACTTAAGTCATGATTGCTCAATGGGTAGATAACTACAGCCCAAGTCGTGCCACTTCAGACGTAGCAGGCCGTTTCGAAGGCCGGTACCGAGATCGGAAGAGCGGTTCAGCA",
+        "CTACACGACGCTCTTCCGATCTACCCAAACCCACAACGAGTAAGGAAGCTGATATAGTATTTCCAGATGAATGCCTCTGGATTGGCAGCAACATAGGATCATGGCAAACCCAAACCCAACAAACACACCACCCAACAAGATCGGAAGAGCGGTTCAGCA"
+    ]
+
+    # Decode the oligos
+    reconstructed_bitstream = decode_oligos_to_bitstream(oligos)
+
+    #Output the reconstructed bitstream; note, if there is a long string of zeroes at the end, that is because the encoding function pads out zeroes if say
+    #for the last DNA strand, it only needed to store 70 bits into the 96 nt payload--it will pad out 26 zeroes to meet the 96 nt payload. 
+    print("Reconstructed Bitstream:")
+    print(reconstructed_bitstream)
+
